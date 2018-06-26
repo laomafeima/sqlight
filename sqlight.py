@@ -8,8 +8,8 @@ A lightweight wrapper around SQLite.
 import sqlite3
 import logging
 
-version = "1.0.0"
-version_info = (1, 0, 0)
+version = "1.1.1"
+version_info = (1, 1, 1)
 
 
 class Connection:
@@ -21,13 +21,15 @@ class Connection:
 
         if "isolation_level" not in args:
             args["isolation_level"] = None
-        self.database = database
-        try:
-            self._db = sqlite3.connect(database, **args)
+        self._database = database
+        self._args = args
+        self._db = None
 
-        except Exception:
-            logging.error("Cannot connect to SQLite on %s", self.database,
-                          exc_info=True)
+    def connect(self):
+        """
+        connect to SQLite.
+        """
+        self._db = sqlite3.connect(self._database, **self._args)
 
     def iter(self, query, *parameters):
         """Returns an iterator for the given query and parameters."""
@@ -111,14 +113,14 @@ class Connection:
 
     def _cursor(self):
         if self._db is None:
-            logging.error("Error connecting to SQLite on %s", self.database)
+            logging.error("Error connecting to SQLite on %s", self._database)
         return self._db.cursor()
 
     def _execute(self, cursor, query, parameters):
         try:
             return cursor.execute(query, parameters)
         except sqlite3.Warning:
-            logging.error("Error connecting to SQLite on %s", self.database)
+            logging.error("Error connecting to SQLite on %s", self._database)
             self.close()
             raise
 

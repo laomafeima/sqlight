@@ -7,9 +7,10 @@ import sqlight
 import os
 
 
-class TestEasySQLite(unittest.TestCase):
+class TestSQLight(unittest.TestCase):
     def setUp(self):
         self.test_class = sqlight.Connection("./test.db")
+        self.test_class.connect()
         self.test_class.execute_lastrowid("""
         CREATE TABLE test(
             id INTEGER  PRIMARY KEY AUTOINCREMENT,
