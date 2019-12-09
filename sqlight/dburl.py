@@ -53,14 +53,16 @@ class DBUrl(object):
 
     def get_args_value(self, values: List[str]) -> object:
         value = values[0]
-        if value in ["True", "False"]:
-            value = self.string2bool(value)
+        if value in ["True", "False", "None"]:
+            value = self.string2type(value)
         return value
 
     @staticmethod
-    def string2bool(v: str) -> bool:
+    def string2type(v: str) -> bool:
         if v == "False":
             return False
+        elif v == "None":
+            return None
         elif v == "True":
             return True
         return None
