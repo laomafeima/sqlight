@@ -1,0 +1,66 @@
+import unittest
+
+from sqlight.dburl import DBUrl
+from sqlight.platforms import Platform, Driver
+from sqlight.err import NotSupportedError
+
+
+class TestDBUrl(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_tiny(self):
+        dburl = DBUrl.get_instance_from_url(
+            "mysql://scott:tiger@localhost:3306/foo")
+        self.assertEqual(dburl.platform, Platform.MySQL)
+        self.assertEqual(dburl.driver, Driver.PYMYSQL)
+        self.assertEqual(dburl.username, "scott")
+        self.assertEqual(dburl.password, "tiger")
+        self.assertEqual(dburl.hostname, "localhost")
+        self.assertEqual(dburl.port, 3306)
+        self.assertEqual(dburl.database, "foo")
+        self.assertEqual(dburl.args, None)
+
+    def test_driver(self):
+        dburl = DBUrl.get_instance_from_url(
+            "mysql+mysqlclient://scott:tiger@localhost:3306/foo")
+        self.assertEqual(dburl.platform, Platform.MySQL)
+        self.assertEqual(dburl.driver, Driver.MYSQLCLIENT)
+        self.assertEqual(dburl.username, "scott")
+        self.assertEqual(dburl.args, None)
+
+    def test_with_args(self):
+        dburl = DBUrl.get_instance_from_url(
+            "mysql+mysqlclient://scott:tiger@localhost:3306/foo?autocommit=False&isolation_level=DEFERRED"
+        )
+        self.assertEqual(dburl.platform, Platform.MySQL)
+        self.assertEqual(dburl.driver, Driver.MYSQLCLIENT)
+        self.assertEqual(dburl.username, "scott")
+        self.assertEqual(dburl.args, {
+            "autocommit": False,
+            "isolation_level": "DEFERRED"
+        })
+
+    def test_sqlite(self):
+        dburl = DBUrl.get_instance_from_url(
+            "sqlite:///~/foo.db?autocommit=False&isolation_level=DEFERRED")
+        self.assertEqual(dburl.platform, Platform.SQLite)
+        self.assertEqual(dburl.driver, Driver.SQLITE)
+        self.assertEqual(dburl.username, None)
+        self.assertEqual(dburl.password, None)
+        self.assertEqual(dburl.hostname, None)
+        self.assertEqual(dburl.port, None)
+        self.assertEqual(dburl.args, {
+            "autocommit": False,
+            "isolation_level": "DEFERRED"
+        })
+
+    def test_error(self):
+        self.assertRaises(NotSupportedError, DBUrl.get_instance_from_url,
+                          "mongodb://scott:tiger@localhost:3306/foo")
+
+        self.assertRaises(NotSupportedError, DBUrl.get_instance_from_url,
+                          "mysql+dev://scott:tiger@localhost:3306/foo")
