@@ -1,5 +1,5 @@
 from urllib.parse import urlparse, parse_qs
-from typing import List
+from typing import List, Dict
 
 from sqlight.platforms import Platform, Driver
 
@@ -40,7 +40,7 @@ class DBUrl(object):
         args = parse_qs(query)
         self.args = {}
         for k, v in args.items():
-            self.args[k] = self.get_args_value(v)
+            self.args[k] = self.args_type_conver(v)
 
     def parse_scheme(self, scheme: str):
         scheme_info = scheme.split("+")
@@ -51,24 +51,71 @@ class DBUrl(object):
 
         self.driver = Driver.get_driver(self.platform, driver)
 
-    def get_args_value(self, values: List[str]) -> object:
+    def args_type_conver(self, values: List[str]) -> object:
         value = values[0]
         if value in ["True", "False", "None"]:
-            value = self.string2type(value)
+            value = self.string2bool(value)
+        elif value.isdigit():
+            value = int(value)
         return value
 
-    @staticmethod
-    def string2type(v: str) -> bool:
-        if v == "False":
-            return False
-        elif v == "None":
-            return None
-        elif v == "True":
-            return True
-        return None
+    def get_args(self) -> Dict:
+        if self.driver is Driver.SQLITE:
+            return self._get_sqlite_args()
+        elif self.driver is Driver.PYMYSQL:
+            return self._get_pymysql_args()
+        elif self.driver is Driver.MYSQLCLIENT:
+            return self._get_mysqlclient_args()
+        elif self.driver is Driver.PSYCOPG:
+            return self._get_psycopg_args()
+
+    def _get_sqlite_args(self):
+        args = dict()
+        args['database'] = self.database
+        args.update(self.args)
+        return args
+
+    def _get_pymysql_args(self):
+        args = dict()
+        args["host"] = self.hostname
+        args["port"] = self.port
+        args["user"] = self.username
+        args["password"] = self.password
+        args["database"] = self.database
+        args.update(self.args)
+        return args
+
+    def _get_mysqlclient_args(self):
+        args = dict()
+        args["host"] = self.hostname
+        args["port"] = self.port
+        args["user"] = self.username
+        args["passwd"] = self.password
+        args["db"] = self.database
+        args.update(self.args)
+        return args
+
+    def _get_psycopg_args(self):
+        args = dict()
+        args["host"] = self.hostname
+        args["port"] = self.port
+        args["user"] = self.username
+        args["password"] = self.password
+        args["dbname"] = self.database
+        args.update(self.args)
+        return args
 
     @staticmethod
-    def get_instance_from_url(url: str) -> 'DBUrl':
+    def string2bool(v: str) -> bool:
+        if v == "False":
+            return False
+        elif v == "True":
+            return True
+        elif v == "None":
+            return None
+
+    @staticmethod
+    def get_from_url(url: str) -> 'DBUrl':
         dburl = DBUrl()
         dburl.parse_url(url)
         return dburl

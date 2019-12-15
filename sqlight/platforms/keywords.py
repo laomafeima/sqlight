@@ -15,7 +15,7 @@ class Platform(Enum):
             if member.value == platform.lower():
                 return member
 
-        raise NotSupportedError("db[%s] is not supported." % platform)
+        raise NotSupportedError("db[{}] is not supported.".format(platform))
 
 
 class Driver(Enum):
@@ -33,4 +33,4 @@ class Driver(Enum):
                 else:
                     continue
 
-        raise NotSupportedError("driver[%s] is not supported." % driver)
+        raise NotSupportedError("driver[{}] is not supported.".format(driver))

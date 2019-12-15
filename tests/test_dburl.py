@@ -13,8 +13,7 @@ class TestDBUrl(unittest.TestCase):
         pass
 
     def test_tiny(self):
-        dburl = DBUrl.get_instance_from_url(
-            "mysql://scott:tiger@localhost:3306/foo")
+        dburl = DBUrl.get_from_url("mysql://scott:tiger@localhost:3306/foo")
         self.assertEqual(dburl.platform, Platform.MySQL)
         self.assertEqual(dburl.driver, Driver.PYMYSQL)
         self.assertEqual(dburl.username, "scott")
@@ -25,7 +24,7 @@ class TestDBUrl(unittest.TestCase):
         self.assertEqual(dburl.args, None)
 
     def test_driver(self):
-        dburl = DBUrl.get_instance_from_url(
+        dburl = DBUrl.get_from_url(
             "mysql+mysqlclient://scott:tiger@localhost:3306/foo")
         self.assertEqual(dburl.platform, Platform.MySQL)
         self.assertEqual(dburl.driver, Driver.MYSQLCLIENT)
@@ -33,19 +32,20 @@ class TestDBUrl(unittest.TestCase):
         self.assertEqual(dburl.args, None)
 
     def test_with_args(self):
-        dburl = DBUrl.get_instance_from_url(
-            "mysql+mysqlclient://scott:tiger@localhost:3306/foo?autocommit=False&isolation_level=DEFERRED"
-        )
+        dburl = DBUrl.get_from_url(
+            "mysql+mysqlclient://scott:tiger@localhost:3306/foo?" +
+            "autocommit=False&isolation_level=DEFERRED&connect_timeout=10")
         self.assertEqual(dburl.platform, Platform.MySQL)
         self.assertEqual(dburl.driver, Driver.MYSQLCLIENT)
         self.assertEqual(dburl.username, "scott")
         self.assertEqual(dburl.args, {
             "autocommit": False,
-            "isolation_level": "DEFERRED"
+            "isolation_level": "DEFERRED",
+            "connect_timeout": 10,
         })
 
     def test_sqlite(self):
-        dburl = DBUrl.get_instance_from_url(
+        dburl = DBUrl.get_from_url(
             "sqlite:///~/foo.db?autocommit=False&isolation_level=DEFERRED")
         self.assertEqual(dburl.platform, Platform.SQLite)
         self.assertEqual(dburl.driver, Driver.SQLITE)
@@ -57,10 +57,20 @@ class TestDBUrl(unittest.TestCase):
             "autocommit": False,
             "isolation_level": "DEFERRED"
         })
+        args = dict()
+        args["database"] = "~/foo.db"
+        args["autocommit"] = False
+        args["isolation_level"] = "DEFERRED"
+        self.assertEqual(dburl.get_args(), args)
+
+    def test_string2bool(self):
+        self.assertEqual(DBUrl.string2bool("None"), None)
+        self.assertEqual(DBUrl.string2bool("True"), True)
+        self.assertEqual(DBUrl.string2bool("False"), False)
 
     def test_error(self):
-        self.assertRaises(NotSupportedError, DBUrl.get_instance_from_url,
+        self.assertRaises(NotSupportedError, DBUrl.get_from_url,
                           "mongodb://scott:tiger@localhost:3306/foo")
 
-        self.assertRaises(NotSupportedError, DBUrl.get_instance_from_url,
+        self.assertRaises(NotSupportedError, DBUrl.get_from_url,
                           "mysql+dev://scott:tiger@localhost:3306/foo")

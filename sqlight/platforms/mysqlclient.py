@@ -7,75 +7,66 @@ import MySQLdb.cursors
 
 import sqlight.err as err
 
-from sqlight.entity import Row
+from sqlight.row import Row
 from sqlight.platforms.db import DB
 
 
-def exce_converter(cls):
-    orig_getattribute = cls.__getattribute__
-
-    def new_getattribute(self, name: str):
-        return func_converter(orig_getattribute(self, name))
-    cls.__getattribute__ = new_getattribute
-
-    def func_converter(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            try:
-                r = func(*args, **kwargs)
-                return r
-            except Exception as e:
-                if isinstance(e, MySQLdb.NotSupportedError):
-                    raise err.NotSupportedError(e) from e
-                elif isinstance(e, MySQLdb.ProgrammingError):
-                    raise err.ProgrammingError(e) from e
-                elif isinstance(e, MySQLdb.InternalError):
-                    raise err.InternalError(e) from e
-                elif isinstance(e, MySQLdb.IntegrityError):
-                    raise err.IntegrityError(e) from e
-                elif isinstance(e, MySQLdb.OperationalError):
-                    raise err.OperationalError(e) from e
-                elif isinstance(e, MySQLdb.DataError):
-                    raise err.DataError(e) from e
-                elif isinstance(e, MySQLdb.DatabaseError):
-                    raise err.DatabaseError(e) from e
-                elif isinstance(e, MySQLdb.InterfaceError):
-                    raise err.InterfaceError(e) from e
-                elif isinstance(e, MySQLdb.Error):
-                    raise err.Error(e) from e
-                elif isinstance(e, MySQLdb.Warning):
-                    raise err.Warning(e) from e
-                else:
-                    raise e
-    return cls
+def exce_converter(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            r = func(*args, **kwargs)
+            return r
+        except Exception as e:
+            if isinstance(e, MySQLdb.NotSupportedError):
+                raise err.NotSupportedError(e) from e
+            elif isinstance(e, MySQLdb.ProgrammingError):
+                raise err.ProgrammingError(e) from e
+            elif isinstance(e, MySQLdb.InternalError):
+                raise err.InternalError(e) from e
+            elif isinstance(e, MySQLdb.IntegrityError):
+                raise err.IntegrityError(e) from e
+            elif isinstance(e, MySQLdb.OperationalError):
+                raise err.OperationalError(e) from e
+            elif isinstance(e, MySQLdb.DataError):
+                raise err.DataError(e) from e
+            elif isinstance(e, MySQLdb.DatabaseError):
+                raise err.DatabaseError(e) from e
+            elif isinstance(e, MySQLdb.InterfaceError):
+                raise err.InterfaceError(e) from e
+            elif isinstance(e, MySQLdb.Error):
+                raise err.Error(e) from e
+            elif isinstance(e, MySQLdb.Warning):
+                raise err.Warning(e) from e
+            else:
+                raise e
+    return wrapper
 
 
-@exce_converter
-class PyMySQL(DB):
+class MySQLDB(DB):
     def __init__(self,
-                 host: str,
-                 port: int,
-                 database: str,
-                 user=None,
-                 password=None,
+                 host: str = None,
+                 port: int = None,
+                 db: str = None,
+                 user: str = None,
+                 passwd: str = None,
                  max_idle_time=7 * 3600,
                  connect_timeout=0,
                  sql_mode="TRADITIONAL",
                  **kwargs):
         self.host = host
-        self.database = database
+        self.database = db
         self.max_idle_time = float(max_idle_time)
 
-        args = dict(database=database,
+        args = dict(db=db,
                     connect_timeout=connect_timeout,
                     sql_mode=sql_mode,
                     **kwargs)
         if user is not None:
             args["user"] = user
-        if password is not None:
-            args["passwd"] = password
+        if passwd is not None:
+            args["passwd"] = passwd
 
-        # We accept a path to a MySQL socket file or a host(:port) string
         if "/" in host:
             args["unix_socket"] = host
         else:
@@ -92,20 +83,23 @@ class PyMySQL(DB):
         """Closes the existing database connection and re-opens it."""
         self.close()
         self._db = MySQLdb.connect(**self._db_args)
-        self._db.autocommit(True)
 
+    @exce_converter
     def connect(self) -> NoReturn:
         self._last_use_time = time.time()
         self.reconnect()
 
+    @exce_converter
     def begin(self) -> NoReturn:
         self._ensure_connected()
         self._db.begin()
 
+    @exce_converter
     def commit(self) -> NoReturn:
         self._ensure_connected()
         self._db.commit()
 
+    @exce_converter
     def rollback(self) -> NoReturn:
         self._ensure_connected()
         self._db.rollback()
@@ -113,28 +107,30 @@ class PyMySQL(DB):
     def get_last_executed(self) -> str:
         return self._last_executed
 
-    def iter(self, query: str, *parameters) -> Iterator(Row):
+    @exce_converter
+    def iter(self, query: str, *parameters, **kwparameters) -> Iterator[Row]:
         self._ensure_connected()
         cursor = MySQLdb.cursors.SSCursor(self._db)
         try:
-            self._execute(cursor, query, parameters)
+            self._execute(cursor, query, parameters, kwparameters)
             column_names = [d[0] for d in cursor.description]
             for row in cursor:
                 yield Row(zip(column_names, row))
         finally:
             self._cursor_close(cursor)
 
-    def query(self, query: str, *parameters) -> List[Row]:
+    @exce_converter
+    def query(self, query: str, *parameters, **kwparameters) -> List[Row]:
         cursor = self._cursor()
         try:
-            self._execute(cursor, query, parameters)
+            self._execute(cursor, query, parameters, kwparameters)
             column_names = [d[0] for d in cursor.description]
             return [Row(zip(column_names, row)) for row in cursor]
         finally:
             self._cursor_close(cursor)
 
-    def get(self, query: str, *parameters) -> Row:
-        rows = self.query(query, *parameters)
+    def get(self, query: str, *parameters, **kwparameters) -> Row:
+        rows = self.query(query, *parameters, **kwparameters)
         if not rows:
             return None
         elif len(rows) > 1:
@@ -143,30 +139,26 @@ class PyMySQL(DB):
         else:
             return rows[0]
 
-    def execute_lastrowid(self, query: str, *parameters) -> int:
+    @exce_converter
+    def execute_lastrowid(self, query: str, *parameters,
+                          **kwparameters) -> int:
         cursor = self._cursor()
         try:
-            self._execute(cursor, query, parameters)
+            self._execute(cursor, query, parameters, kwparameters)
             return cursor.lastrowid
         finally:
             self._cursor_close(cursor)
 
-    def execute_rowcount(self, query: str, *parameters) -> int:
+    @exce_converter
+    def execute_rowcount(self, query: str, *parameters, **kwparameters) -> int:
         cursor = self._cursor()
         try:
-            self._execute(cursor, query, parameters)
+            self._execute(cursor, query, parameters, kwparameters)
             return cursor.rowcount
         finally:
             self._cursor_close(cursor)
 
-    def executemany_lastrowid(self, query: str, parameters: Iterator) -> int:
-        cursor = self._cursor()
-        try:
-            cursor.executemany(query, parameters)
-            return cursor.lastrowid
-        finally:
-            self._cursor_close(cursor)
-
+    @exce_converter
     def executemany_rowcount(self, query: str, parameters: Iterator) -> int:
         cursor = self._cursor()
         try:
@@ -175,8 +167,9 @@ class PyMySQL(DB):
         finally:
             self._cursor_close(cursor)
 
+    @exce_converter
     def close(self) -> NoReturn:
-        if getattr(self, "_db", None) is not None:
+        if self._db is not None:
             self._db.close()
             self._db = None
 
@@ -196,8 +189,9 @@ class PyMySQL(DB):
         return self._db.cursor()
 
     def _cursor_close(self, cursor) -> NoReturn:
-        self._last_executed = cursor._last_executed
+        if getattr(cursor, "_last_executed", None):
+            self._last_executed = cursor._last_executed
         cursor.close()
 
-    def _execute(self, cursor, query, parameters) -> int:
-        return cursor.execute(query, parameters)
+    def _execute(self, cursor, query, parameters, kwparameters) -> int:
+        return cursor.execute(query, kwparameters or parameters)
