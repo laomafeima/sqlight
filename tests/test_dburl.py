@@ -22,6 +22,13 @@ class TestDBUrl(unittest.TestCase):
         self.assertEqual(dburl.port, 3306)
         self.assertEqual(dburl.database, "foo")
         self.assertEqual(dburl.args, None)
+        self.assertEqual(dburl.get_args(), {
+                'host': 'localhost',
+                'port': 3306,
+                'user': "scott",
+                "password": "tiger",
+                "database": "foo",
+            })
 
     def test_driver(self):
         dburl = DBUrl.get_from_url(
@@ -30,6 +37,13 @@ class TestDBUrl(unittest.TestCase):
         self.assertEqual(dburl.driver, Driver.MYSQLCLIENT)
         self.assertEqual(dburl.username, "scott")
         self.assertEqual(dburl.args, None)
+        self.assertEqual(dburl.get_args(), {
+                'host': 'localhost',
+                'port': 3306,
+                'user': "scott",
+                "passwd": "tiger",
+                "db": "foo",
+            })
 
     def test_with_args(self):
         dburl = DBUrl.get_from_url(
@@ -43,6 +57,41 @@ class TestDBUrl(unittest.TestCase):
             "isolation_level": "DEFERRED",
             "connect_timeout": 10,
         })
+        self.assertEqual(dburl.get_args(), {
+                'host': 'localhost',
+                'port': 3306,
+                'user': "scott",
+                "passwd": "tiger",
+                "db": "foo",
+                "autocommit": False,
+                "isolation_level": "DEFERRED",
+                "connect_timeout": 10,
+            })
+
+    def test_postgresql(self):
+        dburl = DBUrl.get_from_url(
+            "postgresql://scott:tiger@localhost:5432/foo?" +
+            "autocommit=False&isolation_level=DEFERRED&connect_timeout=10")
+        self.assertEqual(dburl.platform, Platform.PostgreSQL)
+        self.assertEqual(dburl.driver, Driver.PSYCOPG)
+        self.assertEqual(dburl.username, "scott")
+        self.assertEqual(dburl.args, {
+            "autocommit": False,
+            "isolation_level": "DEFERRED",
+            "connect_timeout": 10,
+        })
+        self.assertEqual(dburl.get_args(), {
+                'host': 'localhost',
+                'port': 5432,
+                'user': "scott",
+                "password": "tiger",
+                "dbname": "foo",
+                "autocommit": False,
+                "isolation_level": "DEFERRED",
+                "connect_timeout": 10,
+            })
+
+
 
     def test_sqlite(self):
         dburl = DBUrl.get_from_url(

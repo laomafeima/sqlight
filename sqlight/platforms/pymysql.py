@@ -78,18 +78,15 @@ class PyMySQL(DB):
         self._last_executed = None
         self._db = None
         self._db_args = args
-        self.reconnect()
-
-    @exce_converter
-    def reconnect(self) -> NoReturn:
-        """Closes the existing database connection and re-opens it."""
-        self.close()
-        self._db = pymysql.connect(**self._db_args)
+        self._closed = False  # connect close flag
 
     @exce_converter
     def connect(self) -> NoReturn:
+        if not self._closed:
+            self.close()
+        self._db = pymysql.connect(**self._db_args)
         self._last_use_time = time.time()
-        self.reconnect()
+        self._closed = False
 
     @exce_converter
     def begin(self) -> NoReturn:
@@ -175,7 +172,7 @@ class PyMySQL(DB):
     def close(self) -> NoReturn:
         if self._db is not None:
             self._db.close()
-            self._db = None
+            self._closed = True
 
     def _ensure_connected(self):
         # Mysql by default closes client connections that are idle for
@@ -183,9 +180,8 @@ class PyMySQL(DB):
         # you try to perform a query and it fails.  Protect against this
         # case by preemptively closing and reopening the connection
         # if it has been idle for too long (7 hours by default).
-        if (self._db is None
-                or (time.time() - self._last_use_time > self.max_idle_time)):
-            self.reconnect()
+        if (time.time() - self._last_use_time > self.max_idle_time):
+            self.connect()
         self._last_use_time = time.time()
 
     def _cursor(self) -> pymysql.cursors.Cursor:

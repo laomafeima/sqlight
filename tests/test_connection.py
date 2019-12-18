@@ -1,7 +1,9 @@
 import unittest
+import warnings
 
 from sqlight.connection import Connection
 from sqlight.platforms import Platform
+from sqlight.err import Error, ProgrammingError, DatabaseError
 
 
 class TestConnection(unittest.TestCase):
@@ -19,36 +21,38 @@ class TestConnection(unittest.TestCase):
     """
 
     def setUp(self):
-        self.sqlite_autocommit = Connection.create_from_dburl(
-                "sqlite:///:memory:?isolation_level=None")
+        warnings.simplefilter("ignore")
 
-        self.pymysql_autocommit = Connection.create_from_dburl(
-                "mysql+pymysql://root:123456@127.0.0.1:3306/test?autocommit=True&connect_timeout=1")
+        self.sqlite = Connection.create_from_dburl(
+            "sqlite:///:memory:?isolation_level=DEFERRED")
 
-        self.mysqlclient_autocommit = Connection.create_from_dburl(
-                "mysql+mysqlclient://root:123456@127.0.0.1:3306/test?autocommit=True")
+        self.pymysql = Connection.create_from_dburl(
+            "mysql+pymysql://root:123456@127.0.0.1:3306/test" +
+            "?autocommit=False&connect_timeout=1")
+
+        self.mysqlclient = Connection.create_from_dburl(
+            "mysql+mysqlclient://root:123456@127.0.0.1:3306/test" +
+            "?autocommit=False")
 
     def tearDown(self):
         pass
 
     def test_loop(self):
-        for c in [self.sqlite_autocommit,
-                  self.pymysql_autocommit,
-                  self.mysqlclient_autocommit]:
+        for c in [self.sqlite, self.pymysql, self.mysqlclient]:
             self.t_connect(c)
             self.t_execute(c)
-            self.t_execute_lastrowid(c)
-            self.t_executemany(c)
-            self.t_execute_rowcount(c)
-            self.t_query(c)
-            self.t_iter(c)
+            self.t_rollback(c)
+            self.t_commit(c)
+            self.t_close_rollback(c)
             self.t_close(c)
 
     def t_connect(self, c):
         c.connect()
 
     def t_close(self, c):
-        c.execute("drop table test")
+        c.connect()
+        if c.dburl.platform is not Platform.SQLite:
+            c.execute("drop table test")
         c.close()
 
     def t_execute(self, c):
@@ -58,52 +62,24 @@ class TestConnection(unittest.TestCase):
         elif c.dburl.platform is Platform.SQLite:
             c.execute(self.sqlite_test_table)
 
-    def t_execute_lastrowid(self, c):
-        """插入数据"""
+    def t_rollback(self, c):
         id = c.execute_lastrowid("insert into test (name) values ('test1')")
         self.assertEqual(id, 1)
+        c.rollback()
+        row = c.get("select * from test where id = %s", id)
+        self.assertEqual(row, None)
 
-    def t_executemany(self, c):
-        """批量插入数据"""
-        values = [
-                ["test2"],
-                ["test3"],
-                ]
-        count = c.executemany("insert into test (name) values (%s)", values)
-        self.assertEqual(count, 2)
-        last = c.get("select * from test where id = %s", 3)
-        self.assertEqual(last.id, 3)
-        self.assertEqual(last.name, "test3")
+    def t_commit(self, c):
+        id = c.execute_lastrowid("insert into test (name) values ('test2')")
+        self.assertIn(id, [1, 2])
+        c.commit()
+        row = c.get("select * from test where id = %s", id)
+        self.assertEqual(row.id, id)
+        self.assertEqual(row.name, "test2")
 
-    def t_execute_rowcount(self, c):
-        """更新数据"""
-        count = c.execute_rowcount("update test set name = %s where id = %s", "test3_after", 3)
-        self.assertEqual(count, 1)
-        last = c.get("select * from test where id = %s", 3)
-        self.assertEqual(last.id, 3)
-        self.assertEqual(last.name, "test3_after")
-
-    def t_query(self, c):
-        """查询数据"""
-        last = c.query("select * from test where id = %(id)s", id=3)
-        self.assertEqual(len(last), 1)
-        self.assertEqual(last[0].id, 3)
-        self.assertEqual(last[0].name, "test3_after")
-
-    def t_iter(self, c):
-        """查询数据"""
-        iters = c.iter("select * from test where id > %(id)s", id=0)
-        all_rows = []
-        id = 0
-        for i in iters:
-            id += 1
-            all_rows.append(i)
-            self.assertEqual(i.id, id)
-            if id == 3:
-                self.assertEqual(i.name, "test3_after")
-            else:
-                self.assertEqual(i.name, "test%d" % id)
-        self.assertEqual(len(all_rows), 3)
-
-
-
+    def t_close_rollback(self, c):
+        id = c.execute_lastrowid("insert into test (name) values ('test3')")
+        self.assertIn(id, [2, 3])
+        c.close()
+        with self.assertRaises(Error):
+            c.get("select * from test where id = %s", id)

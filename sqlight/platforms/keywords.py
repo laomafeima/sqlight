@@ -30,7 +30,5 @@ class Driver(Enum):
             if platform in member.value[1]:
                 if driver is None or member.value[0] == driver.lower():
                     return member
-                else:
-                    continue
 
         raise NotSupportedError("driver[{}] is not supported.".format(driver))

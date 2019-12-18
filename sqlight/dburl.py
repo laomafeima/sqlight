@@ -72,7 +72,8 @@ class DBUrl(object):
     def _get_sqlite_args(self):
         args = dict()
         args['database'] = self.database
-        args.update(self.args)
+        if self.args is not None:
+            args.update(self.args)
         return args
 
     def _get_pymysql_args(self):
@@ -82,7 +83,8 @@ class DBUrl(object):
         args["user"] = self.username
         args["password"] = self.password
         args["database"] = self.database
-        args.update(self.args)
+        if self.args is not None:
+            args.update(self.args)
         return args
 
     def _get_mysqlclient_args(self):
@@ -92,7 +94,8 @@ class DBUrl(object):
         args["user"] = self.username
         args["passwd"] = self.password
         args["db"] = self.database
-        args.update(self.args)
+        if self.args is not None:
+            args.update(self.args)
         return args
 
     def _get_psycopg_args(self):
@@ -102,7 +105,8 @@ class DBUrl(object):
         args["user"] = self.username
         args["password"] = self.password
         args["dbname"] = self.database
-        args.update(self.args)
+        if self.args is not None:
+            args.update(self.args)
         return args
 
     @staticmethod

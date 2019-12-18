@@ -58,6 +58,9 @@ class Connection:
     def close(self):
         self._db.close()
 
+    def get_last_executed(self):
+        return self._db.get_last_executed()
+
     def __del__(self):
         self.close()
 

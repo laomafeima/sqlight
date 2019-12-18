@@ -53,14 +53,18 @@ class SQLite(DB):
         self.isolation_level = kwargs["isolation_level"]
 
         self._last_executed = None
+        self._closed = False  # connect close flag
 
     @exce_converter
     def connect(self) -> NoReturn:
         """
         connect to SQLite.
         """
+        if not self._closed:
+            self.close()
         self._db = sqlite3.connect(self._database, **self._args)
         self._db.set_trace_callback(self._trace_callback)
+        self._closed = False
         if self.init_command is not None:
             cursor = self._cursor()
             self.execute_rowcount(cursor, self.init_command)
@@ -71,13 +75,13 @@ class SQLite(DB):
     def begin(self) -> NoReturn:
         if self.isolation_level is None:
             cursor = self._cursor()
-            self._execute(cursor, "BEGIN")
+            self._execute(cursor, "BEGIN", [], {})
 
     @exce_converter
     def commit(self) -> NoReturn:
         if self.isolation_level is None:
             cursor = self._cursor()
-            self._execute(cursor, "COMMIT")
+            self._execute(cursor, "COMMIT", [], {})
         else:
             self._db.commit()
 
@@ -85,7 +89,7 @@ class SQLite(DB):
     def rollback(self) -> NoReturn:
         if self.isolation_level is None:
             cursor = self._cursor()
-            self._execute(cursor, "ROLLBACK")
+            self._execute(cursor, "ROLLBACK", [], {})
         else:
             self._db.rollback()
 
@@ -189,6 +193,8 @@ class SQLite(DB):
         self._last_executed = last_executed
 
     def _cursor(self) -> sqlite3.Cursor:
+        if self._db is None:
+            raise err.Error("not connected.")
         return self._db.cursor()
 
     @exce_converter
@@ -196,7 +202,7 @@ class SQLite(DB):
         """Closes connection."""
         if self._db is not None:
             self._db.close()
-            self._db = None
+            self._closed = True
 
     @classmethod
     def format_to_qmark(cls, query: str, parameters: List) -> str:
