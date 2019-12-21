@@ -1,14 +1,14 @@
-# sqlight
+# SQLight (WIP)
 A lightweight wrapper around SQLite, MySQL, PostgreSQL.
 
 
-## INSTALL
+## Install
 
 ```
 pip3 install sqlight
 ```
 
-## USGAE
+## Usgae
 
 ```
 import sqlight
@@ -18,5 +18,5 @@ conn.connect()
 result = conn.get("select * from test where id = ?", 1)
 
 ```
-For more examples, please read to tests.py
+For more examples, please read to tests
 
