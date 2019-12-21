@@ -1,5 +1,5 @@
 from setuptools import setup
-from sqlight import version
+from sqlight import VERSION
 
 
 def readme():
@@ -9,13 +9,18 @@ def readme():
 
 setup(
     name="sqlight",
-    version=version,
-    description="A lightweight wrapper around SQLite.",
+    version=VERSION,
+    description="A lightweight wrapper around SQLite, MySQL, PostgreSQL.",
     long_description=readme(),
-    keywords='sqlite sqlite3 lightweight wrapper',
+    long_description_content_type='text/markdown',
+    keywords='sqlite sqlite3 mysql postgresql postgre lightweight wrapper',
     author='laoma',
     url='https://github.com/laomafeima/sqlight',
     license='http://www.apache.org/licenses/LICENSE-2.0',
-    py_modules=["sqlight"],
+    packages=["sqlight", "sqlight.platforms"],
     python_requires=">=3.5",
-    )
+    project_urls={
+        'Documentation': 'https://github.com/laomafeima/sqlight',
+        'Source': 'https://github.com/laomafeima/sqlight',
+    },
+)

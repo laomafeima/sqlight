@@ -1,2 +1,2 @@
 test:
-	py.test tests
+	pytest --cov sqlight

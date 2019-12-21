@@ -1,47 +1,46 @@
 import unittest
 import warnings
+import importlib
 
 from sqlight.connection import Connection
 from sqlight.platforms import Platform
 from sqlight.err import Error, ProgrammingError, DatabaseError
+from .config import MYSQL_CLIENT_URL, PYMYSQL_URL, sqlite_test_table,\
+                    mysql_test_table
 
 
 class TestConnectionAutoCommit(unittest.TestCase):
-    sqlite_test_table = """
-        CREATE TABLE test(
-            id INTEGER  PRIMARY KEY AUTOINCREMENT,
-            name TEXT
-        );
-    """
-    mysql_test_table = """
-        CREATE TABLE test(
-            id int(11) PRIMARY KEY AUTO_INCREMENT,
-            name char(64)
-        )
-    """
 
     def setUp(self):
         warnings.simplefilter("ignore")
+        self.test_cons = []
+        self.test_cons.append(
+            Connection.create_from_dburl(
+                "sqlite:///:memory:?isolation_level=None"))
 
-        self.sqlite_autocommit = Connection.create_from_dburl(
-            "sqlite:///:memory:?isolation_level=None")
+        try:
+            importlib.import_module("MySQLdb.cursors")
+        except ImportError:
+            pass
+        else:
+            self.test_cons.append(Connection.create_from_dburl(
+                MYSQL_CLIENT_URL + "?autocommit=True"))
 
-        self.pymysql_autocommit = Connection.create_from_dburl(
-            "mysql+pymysql://root:123456@127.0.0.1:3306/test" +
-            "?autocommit=True&connect_timeout=1")
-
-        self.mysqlclient_autocommit = Connection.create_from_dburl(
-            "mysql+mysqlclient://root:123456@127.0.0.1:3306/test" +
-            "?autocommit=True")
+        try:
+            importlib.import_module("pymysql.cursors")
+        except ImportError:
+            pass
+        else:
+            self.test_cons.append(Connection.create_from_dburl(
+                    PYMYSQL_URL + "?autocommit=True&connect_timeout=1"))
 
     def tearDown(self):
-        pass
+        for c in self.test_cons:
+            c.connect()
+            c.execute("drop table if exists test")
 
     def test_loop(self):
-        for c in [
-                self.sqlite_autocommit, self.pymysql_autocommit,
-                self.mysqlclient_autocommit
-        ]:
+        for c in self.test_cons:
             self.t_connect(c)
             self.t_execute(c)
             self.t_execute_lastrowid(c)
@@ -65,9 +64,9 @@ class TestConnectionAutoCommit(unittest.TestCase):
     def t_execute(self, c):
         """创建表"""
         if c.dburl.platform is Platform.MySQL:
-            c.execute(self.mysql_test_table)
+            c.execute(mysql_test_table)
         elif c.dburl.platform is Platform.SQLite:
-            c.execute(self.sqlite_test_table)
+            c.execute(sqlite_test_table)
 
     def t_execute_lastrowid(self, c):
         """插入数据"""

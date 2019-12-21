@@ -1,5 +1,5 @@
 # sqlight
-A lightweight wrapper around SQLite.
+A lightweight wrapper around SQLite, MySQL, PostgreSQL.
 
 
 ## INSTALL
@@ -13,7 +13,7 @@ pip3 install sqlight
 ```
 import sqlight
 
-conn = sqlight.Connection("./test.db")
+conn = sqlight.Connection("sqlite:///:memory:?isolation_level=DEFERRED")
 conn.connect()
 result = conn.get("select * from test where id = ?", 1)
 
