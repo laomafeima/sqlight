@@ -175,11 +175,6 @@ class PyMySQL(DB):
             self._closed = True
 
     def _ensure_connected(self):
-        # Mysql by default closes client connections that are idle for
-        # 8 hours, but the client library does not report this fact until
-        # you try to perform a query and it fails.  Protect against this
-        # case by preemptively closing and reopening the connection
-        # if it has been idle for too long (7 hours by default).
         if (time.time() - self._last_use_time > self.max_idle_time):
             self.connect()
         self._last_use_time = time.time()
