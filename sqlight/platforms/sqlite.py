@@ -36,10 +36,6 @@ def exce_converter(func):
 
 
 class SQLite(DB):
-    """
-    A lightweight wrapper around SQLite.
-    default open autocommit mode
-    """
     def __init__(self,
                  database: str = None,
                  init_command: str = None,
@@ -57,9 +53,6 @@ class SQLite(DB):
 
     @exce_converter
     def connect(self) -> NoReturn:
-        """
-        connect to SQLite.
-        """
         if not self._closed:
             self.close()
         self._db = sqlite3.connect(self._database, **self._args)
@@ -99,7 +92,6 @@ class SQLite(DB):
 
     @exce_converter
     def iter(self, query: str, *parameters, **kwparameters) -> Iterator[Row]:
-        """Returns an iterator for the given query and parameters."""
         cursor = self._cursor()
         try:
             self._execute(cursor, query, parameters, kwparameters)
@@ -111,7 +103,6 @@ class SQLite(DB):
 
     @exce_converter
     def query(self, query: str, *parameters, **kwparameters) -> List[Row]:
-        """Returns a row list for the given query and parameters."""
         cursor = self._cursor()
         try:
             self._execute(cursor, query, parameters, kwparameters)
@@ -122,10 +113,6 @@ class SQLite(DB):
 
     @exce_converter
     def get(self, query: str, *parameters, **kwparameters) -> Row:
-        """Returns the (singular) row returned by the given query.
-        If the query has no results, returns None.  If it has
-        more than one result, raises an exception.
-        """
         rows = self.query(query, *parameters, **kwparameters)
         if not rows:
             return None
@@ -138,7 +125,6 @@ class SQLite(DB):
     @exce_converter
     def execute_lastrowid(self, query: str, *parameters,
                           **kwparameters) -> int:
-        """Executes the given query, returning the lastrowid from the query."""
         cursor = self._cursor()
         try:
             self._execute(cursor, query, parameters, kwparameters)
@@ -148,7 +134,6 @@ class SQLite(DB):
 
     @exce_converter
     def execute_rowcount(self, query: str, *parameters, **kwparameters) -> int:
-        """Executes the given query, returning the rowcount from the query."""
         cursor = self._cursor()
         try:
             self._execute(cursor, query, parameters, kwparameters)
@@ -158,9 +143,6 @@ class SQLite(DB):
 
     @exce_converter
     def executemany_rowcount(self, query: str, parameters: Iterator) -> int:
-        """Executes the given query against all the given param sequences.
-        We return the rowcount from the query.
-        """
         cursor = self._cursor()
         try:
             self._executemany(cursor, query, parameters)
@@ -199,7 +181,6 @@ class SQLite(DB):
 
     @exce_converter
     def close(self):
-        """Closes connection."""
         if self._db is not None:
             self._db.close()
             self._closed = True
