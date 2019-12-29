@@ -85,13 +85,11 @@ class TestDBUrl(unittest.TestCase):
                 'port': 5432,
                 'user': "scott",
                 "password": "tiger",
-                "dbname": "foo",
+                "database": "foo",
                 "autocommit": False,
                 "isolation_level": "DEFERRED",
                 "connect_timeout": 10,
             })
-
-
 
     def test_sqlite(self):
         dburl = DBUrl.get_from_url(

@@ -104,7 +104,7 @@ class DBUrl(object):
         args["port"] = self.port
         args["user"] = self.username
         args["password"] = self.password
-        args["dbname"] = self.database
+        args["database"] = self.database
         if self.args is not None:
             args.update(self.args)
         return args

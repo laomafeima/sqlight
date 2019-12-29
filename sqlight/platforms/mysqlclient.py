@@ -50,15 +50,18 @@ class MySQLDB(DB):
                  db: str = None,
                  user: str = None,
                  passwd: str = None,
+                 autocommit: bool = False,
                  max_idle_time=7 * 3600,
                  connect_timeout=0,
                  sql_mode="TRADITIONAL",
                  **kwargs):
         self.host = host
         self.database = db
+        self.autocommit = autocommit
         self.max_idle_time = float(max_idle_time)
 
         args = dict(db=db,
+                    autocommit=autocommit,
                     connect_timeout=connect_timeout,
                     sql_mode=sql_mode,
                     **kwargs)

@@ -39,14 +39,15 @@ class SQLite(DB):
     def __init__(self,
                  database: str = None,
                  init_command: str = None,
+                 autocommit: bool = False,
                  **kwargs):
-        if "isolation_level" not in kwargs:
+        if "isolation_level" not in kwargs and autocommit:
             kwargs["isolation_level"] = None
         self._database = database
         self._args = kwargs
         self._db = None
         self.init_command = init_command
-        self.isolation_level = kwargs["isolation_level"]
+        self.autocommit = autocommit
 
         self._last_executed = None
         self._closed = False  # connect close flag
@@ -61,18 +62,18 @@ class SQLite(DB):
         if self.init_command is not None:
             cursor = self._cursor()
             self.execute_rowcount(cursor, self.init_command)
-            if self.isolation_level is not None:
+            if not self.autocommit:
                 self.commit()
 
     @exce_converter
     def begin(self) -> NoReturn:
-        if self.isolation_level is None:
+        if self.autocommit:
             cursor = self._cursor()
             self._execute(cursor, "BEGIN", [], {})
 
     @exce_converter
     def commit(self) -> NoReturn:
-        if self.isolation_level is None:
+        if self.autocommit:
             cursor = self._cursor()
             self._execute(cursor, "COMMIT", [], {})
         else:
@@ -80,7 +81,7 @@ class SQLite(DB):
 
     @exce_converter
     def rollback(self) -> NoReturn:
-        if self.isolation_level is None:
+        if self.autocommit:
             cursor = self._cursor()
             self._execute(cursor, "ROLLBACK", [], {})
         else:

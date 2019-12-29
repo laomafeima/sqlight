@@ -5,8 +5,8 @@ import importlib
 from sqlight.connection import Connection
 from sqlight.platforms import Platform
 from sqlight.err import Error, ProgrammingError, DatabaseError
-from .config import MYSQL_CLIENT_URL, PYMYSQL_URL, sqlite_test_table,\
-                    mysql_test_table
+from .config import MYSQL_CLIENT_URL, PYMYSQL_URL, POSTGRESQL_URL,\
+        sqlite_test_table, mysql_test_table, postgresql_test_table
 
 
 class TestConnectionAutoCommit(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestConnectionAutoCommit(unittest.TestCase):
         self.test_cons = []
         self.test_cons.append(
             Connection.create_from_dburl(
-                "sqlite:///:memory:?isolation_level=None"))
+                "sqlite:///:memory:?autocommit=True"))
 
         try:
             importlib.import_module("MySQLdb.cursors")
@@ -33,6 +33,13 @@ class TestConnectionAutoCommit(unittest.TestCase):
         else:
             self.test_cons.append(Connection.create_from_dburl(
                     PYMYSQL_URL + "?autocommit=True&connect_timeout=1"))
+        try:
+            importlib.import_module("psycopg2")
+        except ImportError:
+            pass
+        else:
+            self.test_cons.append(Connection.create_from_dburl(
+                    POSTGRESQL_URL + "?autocommit=True"))
 
     def tearDown(self):
         for c in self.test_cons:
@@ -67,11 +74,15 @@ class TestConnectionAutoCommit(unittest.TestCase):
             c.execute(mysql_test_table)
         elif c.dburl.platform is Platform.SQLite:
             c.execute(sqlite_test_table)
+        elif c.dburl.platform is Platform.PostgreSQL:
+            c.execute(postgresql_test_table)
 
     def t_execute_lastrowid(self, c):
         """插入数据"""
-        id = c.execute_lastrowid("insert into test (name) values ('test1')")
-        self.assertEqual(id, 1)
+        name = "test1"
+        c.execute_lastrowid("insert into test (name) values (%s)", name)
+        row = c.get("select * from test where name = %s", name)
+        self.assertEqual(row.id, 1)
 
     def t_executemany(self, c):
         """批量插入数据"""
@@ -103,7 +114,6 @@ class TestConnectionAutoCommit(unittest.TestCase):
         self.assertEqual(
                 c.get_last_executed(),
                 "select * from test where id = 3")
-        print(c.get_last_executed())
 
     def t_get(self, c):
         """查询数据"""
@@ -130,21 +140,22 @@ class TestConnectionAutoCommit(unittest.TestCase):
         self.assertEqual(len(all_rows), 3)
 
     def t_rollback(self, c):
+        name = "test4"
         c.begin()
-        id = c.execute_lastrowid("insert into test (name) values ('test4')")
-        self.assertEqual(id, 4)
+        c.execute_lastrowid("insert into test (name) values (%s)", name)
         c.rollback()
-        row = c.get("select * from test where id = %s", id)
+        row = c.get("select * from test where name = %s", name)
         self.assertEqual(row, None)
 
     def t_commit(self, c):
         c.begin()
-        id = c.execute_lastrowid("insert into test (name) values ('test5')")
-        self.assertIn(id, [4, 5])
+        name = "test5"
+        c.execute_lastrowid("insert into test (name) values (%(name)s)",
+                            name=name)
         c.commit()
-        row = c.get("select * from test where id = %s", id)
-        self.assertEqual(row.id, id)
-        self.assertEqual(row.name, "test5")
+        row = c.get("select * from test where name = %s", name)
+        self.assertIn(row.id, [4, 5])
+        self.assertEqual(row.name, name)
 
     def t_after_close(self, c):
         with self.assertRaises(Error):
