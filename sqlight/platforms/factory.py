@@ -17,6 +17,13 @@ else:
     from sqlight.platforms.pymysql import PyMySQL
 
 try:
+    import psycopg2
+except ImportError:
+    Psycopg2 = None
+else:
+    from sqlight.platforms.psycopg import Psycopg2
+
+try:
     import sqlite3
 except ImportError:
     SQLite = None
@@ -33,6 +40,10 @@ def get_driver(driver: Driver) -> DB:
         if PyMySQL is None:
             _raise_not_supported_driver(driver)
         return PyMySQL
+    elif driver is Driver.PSYCOPG:
+        if Psycopg2 is None:
+            _raise_not_supported_driver(driver)
+        return Psycopg2
     elif driver is Driver.SQLITE:
         if SQLite is None:
             _raise_not_supported_driver(driver)

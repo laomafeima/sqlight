@@ -20,6 +20,13 @@ except ImportError:
 else:
     from sqlight.platforms.pymysql import PyMySQL
 
+try:
+    importlib.import_module("psycopg2")
+except ImportError:
+    Psycopg2 = None
+else:
+    from sqlight.platforms.psycopg import Psycopg2
+
 
 class TestFactory(unittest.TestCase):
 
@@ -29,4 +36,6 @@ class TestFactory(unittest.TestCase):
             self.assertEqual(get_driver(Driver.PYMYSQL), PyMySQL)
         if MySQLDB is not None:
             self.assertEqual(get_driver(Driver.MYSQLCLIENT), MySQLDB)
-        self.assertRaises(ProgrammingError, get_driver, Driver.PSYCOPG)
+        if Psycopg2 is not None:
+            self.assertEqual(get_driver(Driver.PSYCOPG), Psycopg2)
+        self.assertRaises(ProgrammingError, get_driver, "no_driver")

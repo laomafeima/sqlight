@@ -1,5 +1,6 @@
 MYSQL_CLIENT_URL = "mysql+mysqlclient://root:123456@127.0.0.1:3306/test"
 PYMYSQL_URL = "mysql+pymysql://root:123456@127.0.0.1:3306/test"
+POSTGRESQL_URL = "postgresql://postgres:123456@127.0.0.1:5432/test"
 
 sqlite_test_table = """
         CREATE TABLE test(
@@ -15,3 +16,9 @@ mysql_test_table = """
     """
 
 
+postgresql_test_table = """
+        CREATE TABLE test(
+            id SERIAL PRIMARY KEY ,
+            name VARCHAR
+        )
+"""
