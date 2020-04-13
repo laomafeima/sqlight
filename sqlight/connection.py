@@ -1,6 +1,7 @@
 from typing import NoReturn, Iterator, List, Dict
 
 from sqlight.dburl import DBUrl
+from sqlight.err import ProgrammingError
 from sqlight.platforms.factory import get_driver
 from sqlight.platforms.db import DB
 from sqlight.row import Row
@@ -83,7 +84,11 @@ class Connection:
     def executemany(self, query: str, parameters: Iterator[Dict]) -> int:
         """Executes the given query against all the given param sequences.
         We return the rowcount from the query.
+        Raises:
+            ProgrammingError: when parameters is empty.
         """
+        if not parameters:
+            raise ProgrammingError("Parameters are not allowed to be empty.")
         return self._db.executemany_rowcount(query, parameters)
 
     def close(self):
